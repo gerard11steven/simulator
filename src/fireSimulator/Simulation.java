@@ -1,44 +1,60 @@
 package fireSimulator;
 
 import java.util.Random;
+import java.util.Scanner;
 
 public class Simulation {
 	private MapItem[][] mapItems;
-	public final int mapSize = 20;
+	public final static int mapSize = 40;
 	private windData wind;
 	private Random rand;
 	private static final int lowChance = 25;
 	private static final int medChance = 50;
 	private static final int lrgChance = 75;
+	public Scanner input;
 	
 	public Simulation() {
-		mapItems = new MapItem[20][20];
+		ItemFactory factory = new ItemFactory();
+		mapItems = new MapItem[mapSize][mapSize];
 		rand = new Random();
 		for (int y = 0; y < mapSize; y++) {
 			for (int x = 0; x < mapSize; x++) {
-				mapItems[x][y] = new SimpleItem();
 				int i = rand.nextInt(100);
-				if (i < 15)
-					mapItems[x][y].item = MapItemTypes.dirt;
-				else if (i < 30)
-					mapItems[x][y].item = MapItemTypes.grass;
-				else if (i < 40)
-					mapItems[x][y].item = MapItemTypes.house;
-				else if (i < 50)
-					mapItems[x][y].item = MapItemTypes.road;
+				if (i < 1)
+					mapItems[x][y] = factory.makeItem(MapItemTypes.dirt);
+				else if (i < 35)
+					mapItems[x][y] = factory.makeItem(MapItemTypes.grass);
+				else if (i < 45)
+					mapItems[x][y] = factory.makeItem(MapItemTypes.house);
+				else if (i < 55)
+					mapItems[x][y] = factory.makeItem(MapItemTypes.road);
 				else if (i < 65)
-					mapItems[x][y].item = MapItemTypes.sand;
-				else if (i < 85)
-					mapItems[x][y].item = MapItemTypes.tree;
+					mapItems[x][y] = factory.makeItem(MapItemTypes.sand);
+				else if (i < 90)
+					mapItems[x][y] = factory.makeItem(MapItemTypes.tree);
 				else
-					mapItems[x][y].item = MapItemTypes.water;	
+					mapItems[x][y] = factory.makeItem(MapItemTypes.water);	
 			}
 		}
-		mapItems[14][7].onFire = true;
-		wind = new windData(1, 1, 1);
+		
+		input = new Scanner(System.in);
+		System.out.println("Enter a starting position(s) for the fire (format: 1,1 [1,1]): ");
+		String inS = input.nextLine();
+		for (String s : inS.split(" ")) {
+			String[] ss = s.split(",");
+			if (mapItems[Integer.parseInt(ss[0])][Integer.parseInt(ss[1])].flammable) {
+				mapItems[Integer.parseInt(ss[0])][Integer.parseInt(ss[1])].onFire = 1;
+			}
+		}
+		System.out.println("Enter a wind speed and wind direction (format: 1,1,1");
+		inS = input.nextLine();
+		String[] ss = inS.split(",");
+		wind = new windData(Integer.parseInt(ss[0]),
+							Integer.parseInt(ss[1]),
+							Integer.parseInt(ss[2]));
 	}
 
-		// returns a copy of a mapItem
+	// returns a copy of a mapItem
 	public MapItem getMapItem(int x, int y) {
 		try {
 			return mapItems[x][y].clone();
@@ -53,17 +69,8 @@ public class Simulation {
 		return true;
 	}
 
-	public void addMapItem(MapItemTypes objType, int x, int y) {
-		if (!checkMapItem(x, y)) {
-			mapItems[x][y] = new SimpleItem();
-		}
-		if (objType == MapItemTypes.fire) {
-			mapItems[x][y].onFire = true;
-		}
-	}
-
 	public boolean checkForFire(int x, int y) {
-		if (checkMapItem(x, y) && mapItems[x][y].onFire == true) {
+		if (checkMapItem(x, y) && mapItems[x][y].onFire > 0 && mapItems[x][y].burntOut == false) {
 			return true;
 		}
 		return false;
@@ -99,7 +106,7 @@ public class Simulation {
 	}
 
 	public void spreadFire(int xCord, int yCord, int movements) {
-		System.out.println(String.format("spreadfire(%d, %d, %d)", xCord, yCord, movements));
+//		System.out.println(String.format("spreadfire(%d, %d, %d)", xCord, yCord, movements));
 		if (movements <= 0) return;
 		
 		if (wind.xDir == 0 && wind.yDir == 0) {
@@ -114,11 +121,11 @@ public class Simulation {
 		int tarYCord = yCord + wind.yDir;
 		makeFire(tarXCord, tarYCord, movements, lrgChance);
 		if (wind.xDir == 0) {
-			makeFire(tarXCord, tarYCord+1, movements, lowChance);
-			makeFire(tarXCord, tarYCord-1, movements, lowChance);
-		} else if (wind.yDir == 0) {
 			makeFire(tarXCord+1, tarYCord, movements, lowChance);
 			makeFire(tarXCord-1, tarYCord, movements, lowChance);
+		} else if (wind.yDir == 0) {
+			makeFire(tarXCord, tarYCord+1, movements, lowChance);
+			makeFire(tarXCord, tarYCord-1, movements, lowChance);
 		} else {
 			makeFire(xCord, tarYCord, movements, lowChance);
 			makeFire(tarXCord, yCord, movements, lowChance);
@@ -127,18 +134,33 @@ public class Simulation {
 	}
 	
 	private void makeFire(int xCord, int yCord, int movement, int probability) {
-		if (checkMapBounds(xCord, yCord) && rand.nextInt(100) > probability) {
-			mapItems[xCord][yCord].onFire = true;
+		if (checkMapBounds(xCord, yCord) && mapItems[xCord][yCord].flammable && rand.nextInt(100) > probability) {
+			mapItems[xCord][yCord].onFire = 1;
 			spreadFire(xCord, yCord, movement - 1);
 		}
 	}
 	
 	private boolean checkMapBounds(int x, int y) {
-		System.out.println(String.format("checkMapBounds(%d, %d)", x, y));
+//		System.out.println(String.format("checkMapBounds(%d, %d)", x, y));
 		if (x >= mapSize || x < 0) 
 			return false;
 		if (y >= mapSize || y < 0)
 			return false;
 		return true;
+	}
+
+	public void extinguish() {
+		for (int y = 0; y < mapSize; y++) {
+			for (int x = 0; x < mapSize; x++) {
+//				System.out.println(String.format("[%d][%d] burntime = %d, onFire = %d", x,y,mapItems[x][y].burnTime,mapItems[x][y].onFire));
+				if (mapItems[x][y].onFire > 0 && mapItems[x][y].burnTime > 0) {
+//					System.out.println("-->Decrement");
+					mapItems[x][y].burnTime--;
+					if (mapItems[x][y].burnTime == 0) {
+						mapItems[x][y].burntOut = true;
+					}
+				}
+			}
+		}
 	}
 }

@@ -15,12 +15,12 @@ import javax.swing.JPanel;
 
 public class Graphic extends JPanel{
 	private static final long serialVersionUID = -6103563191773906122L;
-	static int frameSize=850;
+	static final int size = 15; // size of each box
+	static int frameSize = size * (Simulation.mapSize + (Simulation.mapSize / 10));
 	public JFrame frame;
 	public VGTimerTask vgTask;
 	public Simulation sim;
 	public Rectangle screen;
-	static final int size=40; // size of each box
 	HashMap<String, Image> imagesHash;
 
 	public Graphic(){
@@ -49,42 +49,47 @@ public class Graphic extends JPanel{
 		setBackground(new Color(80,40,40));
 		super.paintComponent(g);
 		Graphics2D g2 = (Graphics2D)g;
-		for(int j=0;j<sim.mapSize;j++) {
+		for(int j=0;j<Simulation.mapSize;j++) {
 			coX=XXX;
-			for(int i=0;i<sim.mapSize;i++) {
+			for(int i=0;i<Simulation.mapSize;i++) {
 				MapItem item = sim.getMapItem(i, j);
 				if (item == null)
 					continue;
-				insertPicture(g2, coX, coY, item.item);
-				if (item.onFire)
-					drawFire(g2, coX, coY);
-				// g2.setColor(Color.WHITE);
-				// Rectangle2D rec = new Rectangle2D.Double(coX,coY,size,size);
-				// g2.draw(rec);
+				insertJpg(g2, coX, coY, item.item);
+				if (item.onFire > 0) {
+//					System.out.println(String.format("burntime = %d, onFire = %d", item.burnTime,item.onFire));
+					if (item.burntOut) {
+//						System.out.println("burntOut");
+						insertPng(g2, coX, coY, MapItemTypes.fireOut);
+					} else {
+//						System.out.println("onFire");
+						insertPng(g2, coX, coY, MapItemTypes.fire);
+					}
+				}
 				coX+=size;
 			}                       
 			coY+=size;
 		}
 	}
 
-	private void drawFire(Graphics2D g, int xCord, int yCord) {
-		if (!imagesHash.containsKey(MapItemTypes.fire.toString())) {
-			String loc = "pictures//" + MapItemTypes.fire.toString() + ".png";
+	private void insertPng(Graphics2D g, int xCord, int yCord, MapItemTypes item) {
+		if (!imagesHash.containsKey(item.toString())) {
+			String loc = "pictures//" + item.toString() + ".png";
 			// System.out.println(loc);
 			try {
-				imagesHash.put(MapItemTypes.fire.toString(), ImageIO.read((new File(loc)).toURI().toURL()));
+				imagesHash.put(item.toString(), ImageIO.read((new File(loc)).toURI().toURL()));
 			} catch (Exception e) {
-				imagesHash.remove(MapItemTypes.fire.toString());
+				imagesHash.remove(item.toString());
 				e.printStackTrace();
 			}
 		}
-		if (imagesHash.containsKey(MapItemTypes.fire.toString())) {
-			g.drawImage(imagesHash.get(MapItemTypes.fire.toString()),
+		if (imagesHash.containsKey(item.toString())) {
+			g.drawImage(imagesHash.get(item.toString()),
 						xCord, yCord, size, size, null);
 		}
 	}
 	
-	private void insertPicture(Graphics2D g, int xCord, int yCord, MapItemTypes item) {
+	private void insertJpg(Graphics2D g, int xCord, int yCord, MapItemTypes item) {
 		if (!imagesHash.containsKey(item.toString())) {
 			String loc = "pictures//" + item.toString() + ".jpg";
 			// System.out.println(loc);
@@ -105,8 +110,8 @@ public class Graphic extends JPanel{
 	public void makeChanges(){
 		ArrayList<Integer> xPoints = new ArrayList<Integer>();
 		ArrayList<Integer> yPoints = new ArrayList<Integer>();
-		for (int y = 0; y < sim.mapSize; y++) {
-			for (int x = 0; x < sim.mapSize; x++) {
+		for (int y = 0; y < Simulation.mapSize; y++) {
+			for (int x = 0; x < Simulation.mapSize; x++) {
 				if (sim.checkForFire(x, y)) {
 					xPoints.add(x);
 					yPoints.add(y);
@@ -116,6 +121,7 @@ public class Graphic extends JPanel{
 		for (int i = 0; i < xPoints.size(); i++) {
 			sim.spreadFire(xPoints.get(i), yPoints.get(i), sim.getWindSpeed());
 		}
+		sim.extinguish();
 	}
 
 	public static void main(String arg[]){
